@@ -150,7 +150,7 @@ def get_parser():
                         "instead of transposed convolutions")
 
     # Benchmark options
-    # parser.add_argument("--script", action="store_true")
+    parser.add_argument("--script", action="store_true")
     parser.add_argument("--eval", action="store_true")
     parser.add_argument("--debug", type=str, default=None)
 

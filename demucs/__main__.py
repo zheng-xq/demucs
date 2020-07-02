@@ -108,8 +108,8 @@ def main():
             stride=args.conv_stride,
             upsample=args.upsample,
         )
-    # if args.script:
-    #     model = th.jit.script(model)
+    if args.script:
+        model = th.jit.script(model)
     model.to(device)
     if args.show:
         print(model)
