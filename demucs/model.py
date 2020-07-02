@@ -16,6 +16,7 @@ class BLSTM(nn.Module):
     def __init__(self, dim, layers=1):
         super().__init__()
         self.lstm = nn.LSTM(bidirectional=True, num_layers=layers, hidden_size=dim, input_size=dim)
+        self.lstm.flatten_parameters()
         self.linear = nn.Linear(2 * dim, dim)
 
     def forward(self, x):
@@ -59,6 +60,9 @@ def downsample(x, stride):
 
 
 class Demucs(nn.Module):
+# class Demucs(th.jit.ScriptModule):
+#     __constants__ = ["stride"]
+
     @capture_init
     def __init__(self,
                  sources=4,

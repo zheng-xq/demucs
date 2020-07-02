@@ -149,6 +149,11 @@ def get_parser():
                         help="Use linear upsampling + convolution "
                         "instead of transposed convolutions")
 
+    # Benchmark options
+    # parser.add_argument("--script", action="store_true")
+    parser.add_argument("--eval", action="store_true")
+    parser.add_argument("--debug", type=str, default=None)
+
     # Tasnet options
     parser.add_argument("--tasnet", action="store_true")
     parser.add_argument("--split_valid",

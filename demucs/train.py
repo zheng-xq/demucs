@@ -9,6 +9,7 @@ import sys
 import tqdm
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
+import torch
 
 from .utils import apply_model, average_metric, center_trim
 
@@ -84,7 +85,8 @@ def validate_model(epoch,
                    rank=0,
                    world_size=1,
                    shifts=0,
-                   split=False):
+                   split=False,
+                   debug_file=None):
     indexes = range(rank, len(dataset), world_size)
     tq = tqdm.tqdm(indexes,
                    ncols=120,
@@ -101,6 +103,8 @@ def validate_model(epoch,
         sources = streams[1:]
         mix = streams[0]
         estimates = apply_model(model, mix, shifts=shifts, split=split)
+        if debug_file is not None:
+            torch.save(estimates, debug_file)
         loss = criterion(estimates, sources)
         current_loss += loss.item() / len(indexes)
         del estimates, streams, sources

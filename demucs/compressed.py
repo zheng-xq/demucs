@@ -72,12 +72,8 @@ def _get_track_metadata(path):
     return {"duration": audio.duration, "std": mix.std().item(), "mean": mix.mean().item()}
 
 
-def build_metadata(tracks, workers=10):
-    pendings = []
-    with futures.ProcessPoolExecutor(workers) as pool:
-        for name, path in tracks.items():
-            pendings.append((name, pool.submit(_get_track_metadata, path)))
-    return {name: p.result() for name, p in pendings}
+def build_metadata(tracks):
+    return {name: _get_track_metadata(path) for name, path in tracks.items()}
 
 
 def build_musdb_metadata(path, musdb, workers):

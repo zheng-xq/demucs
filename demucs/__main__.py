@@ -26,6 +26,10 @@ from .train import train_model, validate_model
 from .utils import human_seconds, load_model, save_model, sizeof_fmt
 
 
+th.backends.cudnn.deterministic = True
+th.backends.cudnn.benchmark = False
+
+
 @dataclass
 class SavedState:
     metrics: list = field(default_factory=list)
@@ -104,6 +108,8 @@ def main():
             stride=args.conv_stride,
             upsample=args.upsample,
         )
+    # if args.script:
+    #     model = th.jit.script(model)
     model.to(device)
     if args.show:
         print(model)
@@ -172,19 +178,12 @@ def main():
                              stride=stride,
                              samplerate=args.samplerate,
                              channels=args.audio_channels)
-        valid_set = StemsSet(get_musdb_tracks(args.musdb, subsets=["train"], split="valid"),
+
+        # Reuse training data since we're just benchmarking.
+        valid_set = StemsSet(get_musdb_tracks(args.musdb, subsets=["train"], split="train"),
                              metadata,
                              samplerate=args.samplerate,
                              channels=args.audio_channels)
-
-    best_loss = float("inf")
-    for epoch, metrics in enumerate(saved.metrics):
-        print(f"Epoch {epoch:03d}: "
-              f"train={metrics['train']:.8f} "
-              f"valid={metrics['valid']:.8f} "
-              f"best={metrics['best']:.4f} "
-              f"duration={human_seconds(metrics['duration'])}")
-        best_loss = metrics['best']
 
     if args.world_size > 1:
         dmodel = DistributedDataParallel(model,
@@ -193,78 +192,41 @@ def main():
     else:
         dmodel = model
 
-    for epoch in range(len(saved.metrics), args.epochs):
-        begin = time.time()
-        model.train()
-        train_loss = train_model(epoch,
-                                 train_set,
-                                 dmodel,
-                                 criterion,
-                                 optimizer,
-                                 augment,
-                                 batch_size=args.batch_size,
-                                 device=device,
-                                 repeat=args.repeat,
-                                 seed=args.seed,
-                                 workers=args.workers,
-                                 world_size=args.world_size)
-        model.eval()
-        valid_loss = validate_model(epoch,
-                                    valid_set,
-                                    model,
+    if not args.eval:
+        for epoch in range(len(saved.metrics), args.epochs):
+            begin = time.time()
+            model.train()
+            train_loss = train_model(epoch,
+                                    train_set,
+                                    dmodel,
                                     criterion,
+                                    optimizer,
+                                    augment,
+                                    batch_size=args.batch_size,
                                     device=device,
-                                    rank=args.rank,
-                                    split=args.split_valid,
+                                    repeat=args.repeat,
+                                    seed=args.seed,
+                                    workers=args.workers,
                                     world_size=args.world_size)
 
-        duration = time.time() - begin
-        if valid_loss < best_loss:
-            best_loss = valid_loss
-            saved.best_state = {
-                key: value.to("cpu").clone()
-                for key, value in model.state_dict().items()
-            }
-        saved.metrics.append({
-            "train": train_loss,
-            "valid": valid_loss,
-            "best": best_loss,
-            "duration": duration
-        })
-        if args.rank == 0:
-            json.dump(saved.metrics, open(metrics_path, "w"))
+            duration = time.time() - begin
+            print(f"Epoch {epoch:03d}: "
+                f"train={train_loss:.8f} "
+                f"duration={human_seconds(duration)}")
 
-        saved.last_state = model.state_dict()
-        saved.optimizer = optimizer.state_dict()
-        if args.rank == 0 and not args.test:
-            th.save(saved, checkpoint_tmp)
-            checkpoint_tmp.rename(checkpoint)
+    if args.debug is not None and os.path.exists(args.debug):
+        os.remove(args.debug)
 
-        print(f"Epoch {epoch:03d}: "
-              f"train={train_loss:.8f} valid={valid_loss:.8f} best={best_loss:.4f} "
-              f"duration={human_seconds(duration)}")
-
-    del dmodel
-    model.load_state_dict(saved.best_state)
-    if args.eval_cpu:
-        device = "cpu"
-        model.to(device)
     model.eval()
-    evaluate(model,
-             args.musdb,
-             eval_folder,
-             rank=args.rank,
-             world_size=args.world_size,
-             device=device,
-             save=args.save,
-             split=args.split_valid,
-             shifts=args.shifts,
-             workers=args.eval_workers)
-    model.to("cpu")
-    save_model(model, args.models / f"{name}.th")
-    if args.rank == 0:
-        print("done")
-        done.write_text("done")
+    valid_loss = validate_model(0,
+                                valid_set,
+                                model,
+                                criterion,
+                                device=device,
+                                rank=args.rank,
+                                split=args.split_valid,
+                                world_size=args.world_size,
+                                debug_file=args.debug)
 
 
 if __name__ == "__main__":
