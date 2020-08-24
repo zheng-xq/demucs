@@ -153,9 +153,15 @@ def main():
     # Setting number of samples so that all convolution windows are full.
     # Prevents hard to debug mistake with the prediction being shifted compared
     # to the input mixture.
+    if 0:
+        import pdb
+        pdb.set_trace()
     samples = model.valid_length(args.samples)
     print(f"Number of training samples adjusted to {samples}")
 
+    if 0:
+        import pdb
+        pdb.set_trace()
     if args.raw:
         train_set = Rawset(args.raw / "train",
                            samples=samples + args.data_stride,

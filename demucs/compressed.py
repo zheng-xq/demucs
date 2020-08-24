@@ -21,12 +21,15 @@ class StemsSet:
     def __init__(self, tracks, metadata, duration=None, stride=1, samplerate=44100, channels=2):
 
         self.metadata = []
+        if 0:
+            import pdb
+            pdb.set_trace()
         for name, path in tracks.items():
             meta = dict(metadata[name])
             meta["path"] = path
             meta["name"] = name
             self.metadata.append(meta)
-            if duration is not None and meta["duration"] < duration:
+            if 0 and duration is not None and meta["duration"] < duration:
                 raise ValueError(f"Track {name} duration is too small {meta['duration']}")
         self.metadata.sort(key=lambda x: x["name"])
         self.duration = duration
@@ -38,6 +41,9 @@ class StemsSet:
         return sum(self._examples_count(m) for m in self.metadata)
 
     def _examples_count(self, meta):
+        if 0:
+            import pdb
+            pdb.set_trace()
         if self.duration is None:
             return 1
         else:
@@ -77,6 +83,9 @@ def build_metadata(tracks):
 
 
 def build_musdb_metadata(path, musdb, workers):
+    if 0:
+        import pdb
+        pdb.set_trace()
     tracks = get_musdb_tracks(musdb)
     metadata = build_metadata(tracks)
     path.parent.mkdir(exist_ok=True, parents=True)

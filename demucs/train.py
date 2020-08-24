@@ -38,6 +38,9 @@ def train_model(epoch,
     else:
         loader = DataLoader(dataset, batch_size=batch_size, num_workers=workers, shuffle=True)
     current_loss = 0
+    if 0:
+        import pdb
+        pdb.set_trace()
     for repetition in range(repeat):
         tq = tqdm.tqdm(loader,
                        ncols=120,
@@ -47,6 +50,7 @@ def train_model(epoch,
                        unit=" batch")
         total_loss = 0
         for idx, streams in enumerate(tq):
+            print('XXXQQQ: streams-shape: %s' % (streams.shape,))
             if len(streams) < batch_size:
                 # skip uncomplete batch for augment.Remix to work properly
                 continue
