@@ -60,7 +60,17 @@ class Model:
 
     def eval(self, niter=1):
         # TODO: implement the eval version
-        pass
+        self.model.eval()
+        for _ in range(niter):
+            streams, = self.example_inputs
+            streams = streams.to(self.device)
+            sources = streams[:, 1:]
+            sources = self.augment(sources)
+            mix = sources.sum(dim=1)
+
+            estimates = self.model(mix)
+            sources = center_trim(sources, estimates)
+            loss = self.criterion(estimates, sources)
 
     def train(self, niter=1):
         self.model.train()
