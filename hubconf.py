@@ -5,7 +5,6 @@ import numpy as np
 from fractions import Fraction
 
 from demucs.model import Demucs
-from demucs.compressed import StemsSet, build_musdb_metadata, get_musdb_tracks
 from demucs.parser import get_name, get_parser
 from demucs.augment import FlipChannels, FlipSign, Remix, Shift
 from demucs.utils import capture_init, center_trim
@@ -35,9 +34,7 @@ class Model:
             samples = 80000
             # TODO: calculate the right shape
             self.example_inputs = (torch.rand([4, 5, 2, 135576]), )
-        
-        build_musdb_metadata(args.metadata, args.musdb, args.workers)
-        self.metadata = json.load(open(args.metadata))
+
         self.duration = Fraction(samples + args.data_stride, args.samplerate)
         self.stride = Fraction(args.data_stride, args.samplerate)
 
@@ -52,27 +49,22 @@ class Model:
         else:
             self.augment = Shift(args.data_stride)
 
-        self.train_set = StemsSet(get_musdb_tracks(args.musdb, subsets=["train"], split="train"),
-                             self.metadata,
-                             duration=self.duration,
-                             stride=self.stride,
-                             samplerate=args.samplerate,
-                             channels=args.audio_channels)
-
     def get_module(self):
+        # TODO: merge this with train and eval
         def helper(streams):
             streams = streams.to(self.device)
             sources = streams[:, 1:]
             sources = self.augment(sources)
             mix = sources.sum(dim=1)
             estimates = self.model(mix)
-        self.model_wrapper = helper
-        return self.model_wrapper, self.example_inputs
+        return helper, self.example_inputs
 
     def eval(self, niter=1):
+        # TODO: implement the eval version
         pass
 
     def train(self, niter=1):
+        self.model.train()
         for _ in range(niter):
             streams, = self.example_inputs
             streams = streams.to(self.device)
