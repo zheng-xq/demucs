@@ -30,7 +30,6 @@ class Model:
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=args.lr)
 
         if 1:
-            args.musdb = '~/MUSDB18/MUSDB18-7'
             samples = 80000
             # TODO: calculate the right shape
             self.example_inputs = (torch.rand([4, 5, 2, 135576]), )
